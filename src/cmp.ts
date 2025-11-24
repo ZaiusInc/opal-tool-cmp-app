@@ -50,3 +50,75 @@ export const getTaskDetailsFromCMP = async (
     throw error;
   }
 };
+
+export const createMilestoneWithinCampaign = async (
+  campaignId: string,
+  milestoneData: {
+    title: string;
+    description?: string | null;
+    due_date: string;           // ISO 8601 UTC, required
+    hex_color: string;          // Required
+    tasks?: { id: string }[];   // Array of objects with id
+  },
+  authData: OptiAuthData
+) => {
+  try {
+    // Validate required fields
+    if (!milestoneData.title) {
+      throw new Error("title is required.");
+    }
+
+    if (!milestoneData.due_date) {
+      throw new Error("due_date is required (ISO 8601 UTC).");
+    }
+
+    if (!milestoneData.hex_color) {
+      throw new Error("hex_color is required (e.g., #4ECFD5).");
+    }
+
+    // Validate tasks structure
+    if (milestoneData.tasks && !milestoneData.tasks.every(t => t.id)) {
+      throw new Error("Each task must be an object containing an 'id' field.");
+    }
+
+    // Headers
+    const headers = {
+      Accept: "application/json",
+      "x-auth-token-type": "opti-id",
+      Authorization: `${authData.credentials.token_type} ${authData.credentials.access_token}`,
+      "Accept-Encoding": "gzip",
+      "x-request-id": generateNumericId(),
+      "x-org-sso-id": authData.credentials.org_sso_id,
+      "Content-Type": "application/json",
+    };
+
+    const url = `${CMP_BASE_URL}/v3/milestones`;
+
+    // Build request body exactly as the API requires
+    const requestBody = {
+      title: milestoneData.title,
+      description: milestoneData.description || null,
+      campaign_id: campaignId,
+      due_date: milestoneData.due_date,    // MUST be: 2025-11-24T13:15:30Z
+      hex_color: milestoneData.hex_color,  // REQUIRED
+      tasks: milestoneData.tasks || [],    // MUST be [{ id }]
+    };
+
+    console.log("CMP Milestone Payload:", requestBody);
+
+    // 🔥 Actual API POST call (per doc)
+    const res = await axios.post(url, requestBody, { headers });
+
+    return res.data;
+
+  } catch (error: any) {
+    console.error("Failed to create milestone:", error.message);
+
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("CMP Error:", error.response.data);
+    }
+
+    throw error;
+  }
+};
+

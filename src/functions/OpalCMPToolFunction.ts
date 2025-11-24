@@ -1,5 +1,5 @@
 import { logger, Function, Response } from '@zaiusinc/app-sdk';
-import { getTaskDetailsFromCMP } from '../cmp';
+import { getTaskDetailsFromCMP, createMilestoneWithinCampaign } from '../cmp';
 // import { AuthSection } from '../data/data';
 
 
@@ -19,6 +19,16 @@ interface OptiAuthData {
   };
 }
 
+function toIsoUtc(dateString: string): string {
+  const date = new Date(dateString);
+
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date format: ${dateString}`);
+  }
+
+  return date.toISOString(); // Always outputs: 2025-11-24T13:15:30.000Z
+}
+
 // Define Opal tool metadata  - list of tools and their parameters
 const discoveryPayload = {
   'functions': [
@@ -34,6 +44,57 @@ const discoveryPayload = {
         }
       ],
       'endpoint': '/tools/get-task-brief',
+      'http_method': 'POST',
+      'auth_requirements': [
+        {
+          'provider': 'OptiID',
+          'scope_bundle': 'default',
+          'required': true
+        }
+      ]
+    },
+    {
+      'name': 'create_milestone_within_campaign',
+      'description': 'Create a milestone inside a CMP campaign',
+      'parameters': [
+        {
+          'name': 'campaign_id',
+          'type': 'string',
+          'description': 'The CMP campaign ID',
+          'required': true
+        },
+        {
+          'name': 'title',
+          'type': 'string',
+          'description': 'Title of the milestone',
+          'required': true
+        },
+        {
+          'name': 'description',
+          'type': 'string',
+          'description': 'Description of the milestone (optional)',
+          'required': false
+        },
+        {
+          'name': 'due_date',
+          'type': 'string',
+          'description': 'Due date in ISO 8601 UTC format e.g. 2025-11-24T13:15:30Z',
+          'required': true
+        },
+        {
+          'name': 'hex_color',
+          'type': 'string',
+          'description': 'Hex color code for the milestone label',
+          'required': false
+        },
+        {
+          'name': 'tasks',
+          'type': 'array',
+          'description': 'List of task objects with format [{ id: string }]',
+          'required': false
+        }
+      ],
+      'endpoint': '/tools/create-milestone-within-campaign',
       'http_method': 'POST',
       'auth_requirements': [
         {
@@ -70,6 +131,15 @@ export class OpalCMPToolFunction extends Function {
       const authData = this.extractAuthData() as OptiAuthData;
       const response = await this.getTaskBriefDetails(params, authData);
       return new Response(200, response);
+    } else if (this.request.path === '/tools/create-milestone-within-campaign') {
+
+      const params = this.extractParameters();
+      const authData = this.extractAuthData() as OptiAuthData;
+
+      const response = await this.createMilestoneWithinCampaign(params, authData);
+
+      return new Response(200, response);
+
     } else {
       return new Response(400, 'Invalid path');
     }
@@ -120,4 +190,40 @@ export class OpalCMPToolFunction extends Function {
       throw new Error('Failed to fetch CMP task brief');
     }
   }
+
+  private async createMilestoneWithinCampaign(parameters: any, authData: OptiAuthData) {
+    const { campaign_id, title, description, hex_color, tasks } = parameters;
+    let { due_date } = parameters;
+
+    try {
+      if (!campaign_id) throw new Error('campaign_id is required');
+      if (!title) throw new Error('title is required');
+      if (!due_date) throw new Error('due_date is required');
+
+      due_date = toIsoUtc(due_date);
+
+      const milestonePayload = {
+        title,
+        description: description || null,
+        due_date,
+        hex_color: hex_color || '#4ECFD5',
+        tasks: tasks || []
+      };
+
+      logger.info('Creating milestone with payload:', milestonePayload);
+
+      const result = await createMilestoneWithinCampaign(
+        campaign_id,
+        milestonePayload,
+        authData
+      );
+
+      return { milestone: result };
+
+    } catch (error: any) {
+      console.error('Error creating milestone:', error.message);
+      throw new Error('Failed to create milestone in CMP');
+    }
+  }
+
 }
