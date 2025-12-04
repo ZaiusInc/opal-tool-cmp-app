@@ -1,5 +1,5 @@
 import { logger, Function, Response } from '@zaiusinc/app-sdk';
-import { getTaskDetailsFromCMP, createMilestoneWithinCampaign } from '../cmp';
+import { getTaskDetailsFromCMP, createMilestoneWithinCampaign, updateMilestoneWithinCampaign } from '../cmp';
 // import { AuthSection } from '../data/data';
 
 
@@ -103,6 +103,63 @@ const discoveryPayload = {
           'required': true
         }
       ]
+    },
+    {
+      'name': 'update_milestone_within_campaign',
+      'description': 'Update a milestone inside a CMP campaign',
+      'parameters': [
+        {
+          'name': 'id',
+          'type': 'string',
+          'description': 'The milestone ID to update',
+          'required': true
+        },
+        {
+          'name': 'title',
+          'type': 'string',
+          'description': 'Updated title (1–80 chars)',
+          'required': false
+        },
+        {
+          'name': 'description',
+          'type': 'string',
+          'description': 'Updated description (1–250 chars)',
+          'required': false
+        },
+        {
+          'name': 'campaign_id',
+          'type': 'string',
+          'description': 'Campaign ID to associate with this milestone',
+          'required': true
+        },
+        {
+          'name': 'due_date',
+          'type': 'string',
+          'description': 'Updated ISO 8601 UTC due date',
+          'required': false
+        },
+        {
+          'name': 'hex_color',
+          'type': 'string',
+          'description': 'Updated hex color code',
+          'required': false
+        },
+        {
+          'name': 'tasks',
+          'type': 'array',
+          'description': 'List of task objects [{ id: string }]',
+          'required': true
+        }
+      ],
+      'endpoint': '/tools/update-milestone-within-campaign',
+      'http_method': 'PATCH',
+      'auth_requirements': [
+        {
+          'provider': 'OptiID',
+          'scope_bundle': 'default',
+          'required': true
+        }
+      ]
     }
   ]
 };
@@ -140,6 +197,14 @@ export class OpalCMPToolFunction extends Function {
 
       return new Response(200, response);
 
+    } else if (this.request.path === '/tools/update-milestone-within-campaign') {
+
+      const params = this.extractParameters();
+      const authData = this.extractAuthData() as OptiAuthData;
+
+      const response = await this.updateMilestoneWithinCampaign(params, authData);
+
+      return new Response(200, response);
     } else {
       return new Response(400, 'Invalid path');
     }
@@ -225,5 +290,44 @@ export class OpalCMPToolFunction extends Function {
       throw new Error('Failed to create milestone in CMP');
     }
   }
+
+  private async updateMilestoneWithinCampaign(parameters: any, authData: OptiAuthData) {
+    const { id, title, description, campaign_id, hex_color, tasks } = parameters;
+    let { due_date } = parameters;
+
+    try {
+      if (!id) throw new Error('Milestone "id" is required');
+      if (!campaign_id) throw new Error('"campaign_id" is required');
+      if (!tasks) throw new Error('"tasks" is required and must be an array');
+
+      if (due_date) {
+        due_date = toIsoUtc(due_date);
+      }
+
+      const payload = {
+        ...(title && { title }),
+        ...(description !== undefined && { description }),
+        campaign_id,
+        ...(due_date && { due_date }),
+        ...(hex_color && { hex_color }),
+        tasks // required
+      };
+
+      logger.info('Updating milestone with payload:', payload);
+
+      const result = await updateMilestoneWithinCampaign(
+        id,
+        payload,
+        authData
+      );
+
+      return { milestone: result };
+
+    } catch (error: any) {
+      console.error('Error updating milestone:', error.message);
+      throw new Error('Failed to update milestone in CMP');
+    }
+  }
+
 
 }

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { CMP_BASE_URL } from './config';
 // import { AuthData } from './types/auth';
 
@@ -107,7 +107,7 @@ export const createMilestoneWithinCampaign = async (
     console.log("CMP Milestone Payload:", requestBody);
 
     // 🔥 Actual API POST call (per doc)
-    const res = await axios.post(url, requestBody, { headers });
+    const res: AxiosResponse = await axios.post(url, requestBody, { headers });
 
     return res.data;
 
@@ -116,6 +116,71 @@ export const createMilestoneWithinCampaign = async (
 
     if (axios.isAxiosError(error) && error.response) {
       console.error("CMP Error:", error.response.data);
+    }
+
+    throw error;
+  }
+};
+
+
+export const updateMilestoneWithinCampaign = async (
+  milestoneId: string,
+  updateData: {
+    title?: string;
+    description?: string | null;
+    campaign_id: string;           // required
+    due_date?: string;
+    hex_color?: string;
+    tasks: Array<{ id: string }>;  // required
+  },
+  authData: OptiAuthData
+) => {
+  try {
+    // Required fields
+    if (!updateData.campaign_id) {
+      throw new Error('"campaign_id" is required.');
+    }
+
+    if (!updateData.tasks || !Array.isArray(updateData.tasks)) {
+      throw new Error('"tasks" is required and must be an array');
+    }
+
+    if (!updateData.tasks.every((t) => t.id)) {
+      throw new Error('Each task must contain an "id" field.');
+    }
+
+    // Additional CMP validations
+    if (updateData.title && (updateData.title.length < 1 || updateData.title.length > 80)) {
+      throw new Error('title must be 1–80 characters.');
+    }
+
+    if (updateData.description && updateData.description.length > 250) {
+      throw new Error('description cannot exceed 250 characters.');
+    }
+
+    const headers = {
+      Accept: 'application/json',
+      'x-auth-token-type': 'opti-id',
+      Authorization: `${authData.credentials.token_type} ${authData.credentials.access_token}`,
+      'Accept-Encoding': 'gzip',
+      'x-request-id': Date.now().toString(),
+      'x-org-sso-id': authData.credentials.org_sso_id,
+      'Content-Type': 'application/json'
+    };
+
+    const url = `${CMP_BASE_URL}/v3/milestones/${milestoneId}`;
+
+    console.log('CMP Update Milestone Payload:', updateData);
+
+    const res: AxiosResponse = await axios.patch(url, updateData, { headers });
+
+    return res.data;
+
+  } catch (error: any) {
+    console.error('Failed to update milestone:', error.message);
+
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('CMP Error:', error.response.data);
     }
 
     throw error;
