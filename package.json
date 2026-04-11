@@ -37,7 +37,7 @@
   "dependencies": {
     "@zaiusinc/app-sdk": "2.2.3",
     "@zaiusinc/node-sdk": "^2.0.0",
-    "axios": "^1.12.2",
+    "axios": "^1.15.0",
     "node-fetch": "^2.7.0"
   },
   "resolutions": {
