@@ -53,7 +53,7 @@ export const createMilestoneWithinCampaign = async (
     description?: string | null;
     due_date: string;
     hex_color: string;
-    tasks?: { id: string }[];
+    tasks?: Array<{ id: string }>;
   },
   authData: OptiAuthData
 ) => {

@@ -50,116 +50,9 @@ const discoveryPayload = {
       ]
     },
     {
-      name: 'create_milestone_within_campaign',
-      description: 'Create a milestone inside a CMP campaign',
-      parameters: [
-        {
-          name: 'campaign_id',
-          type: 'string',
-          description: 'The CMP campaign ID',
-          required: true
-        },
-        {
-          name: 'title',
-          type: 'string',
-          description: 'Title of the milestone',
-          required: true
-        },
-        {
-          name: 'description',
-          type: 'string',
-          description: 'Description of the milestone (optional)',
-          required: false
-        },
-        {
-          name: 'due_date',
-          type: 'string',
-          description: 'Due date in ISO 8601 UTC format e.g. 2025-11-24T13:15:30Z',
-          required: true
-        },
-        {
-          name: 'hex_color',
-          type: 'string',
-          description: 'Hex color code for the milestone label',
-          required: false
-        },
-        {
-          name: 'tasks',
-          type: 'array',
-          description: 'List of task objects with format [{ id: string }]',
-          required: false
-        }
-      ],
-      endpoint: '/tools/create-milestone-within-campaign',
-      http_method: 'POST',
-      auth_requirements: [
-        {
-          provider: 'OptiID',
-          scope_bundle: 'default',
-          required: true
-        }
-      ]
-    },
-    {
-      name: 'update_milestone_within_campaign',
-      description: 'Update a milestone inside a CMP campaign',
-      parameters: [
-        {
-          name: 'id',
-          type: 'string',
-          description: 'The milestone ID to update',
-          required: true
-        },
-        {
-          name: 'title',
-          type: 'string',
-          description: 'Updated title (1–80 chars)',
-          required: false
-        },
-        {
-          name: 'description',
-          type: 'string',
-          description: 'Updated description (1–250 chars)',
-          required: false
-        },
-        {
-          name: 'campaign_id',
-          type: 'string',
-          description: 'Campaign ID to associate with this milestone',
-          required: true
-        },
-        {
-          name: 'due_date',
-          type: 'string',
-          description: 'Updated ISO 8601 UTC due date',
-          required: false
-        },
-        {
-          name: 'hex_color',
-          type: 'string',
-          description: 'Updated hex color code',
-          required: false
-        },
-        {
-          name: 'tasks',
-          type: 'array',
-          description: 'List of task objects [{ id: string }]',
-          required: true
-        }
-      ],
-      endpoint: '/tools/update-milestone-within-campaign',
-      http_method: 'PATCH',
-      auth_requirements: [
-        {
-          provider: 'OptiID',
-          scope_bundle: 'default',
-          required: true
-        }
-      ]
-    },
-    {
       name: 'get_library_asset_location',
-      description: 'Retrieve asset metadata including title, file location, and folder ID from the CMP library using the asset ID.',
+      description: `Retrieve asset metadata including title, file location, and folder ID from the CMP 
+      library using the asset ID.`,
       parameters: [
         {
           name: 'asset_id',
@@ -191,16 +84,6 @@ export class OpalCMPToolFunction extends Function {
       const params = this.extractParameters() as TaskBriefParameters;
       const authData = this.extractAuthData() as OptiAuthData;
       const response = await this.getTaskBriefDetails(params, authData);
-      return new Response(200, response);
-    } else if (this.request.path === '/tools/create-milestone-within-campaign') {
-      const params = this.extractParameters();
-      const authData = this.extractAuthData() as OptiAuthData;
-      const response = await this.createMilestoneWithinCampaign(params, authData);
-      return new Response(200, response);
-    } else if (this.request.path === '/tools/update-milestone-within-campaign') {
-      const params = this.extractParameters();
-      const authData = this.extractAuthData() as OptiAuthData;
-      const response = await this.updateMilestoneWithinCampaign(params, authData);
       return new Response(200, response);
     } else if (this.request.path === '/tools/get-library-asset-location') {
       const params = this.extractParameters();
