@@ -192,7 +192,8 @@ export class OpalCMPToolFunction extends Function {
         asset_id: asset.id,
         asset_title: asset.title,
         file_location: asset.file_location,
-        folder_id: asset.folder_id
+        folder_id: asset.folder_id,
+        url: asset.url
       };
     } catch (error: any) {
       logger.error('Error fetching asset location:', error.message);

@@ -155,6 +155,7 @@ export interface CmpAssetLocation {
   title: string;
   file_location: string;
   folder_id: string | null;
+  url: string | null;
 }
 
 export const getAssetLocation = async (
@@ -177,8 +178,8 @@ export const getAssetLocation = async (
       `${CMP_BASE_URL}/v3/asset-urls/${assetId}`,
       { headers }
     );
-    const { id, title, file_location, folder_id } = res.data;
-    return { id, title, file_location, folder_id };
+    const { id, title, file_location, folder_id, url } = res.data;
+    return { id, title, file_location, folder_id, url };
   } catch (error: any) {
     console.error(`Failed to fetch asset ${assetId}:`, error.message);
     if (axios.isAxiosError(error) && error.response) {

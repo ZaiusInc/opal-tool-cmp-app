@@ -1,7 +1,7 @@
 meta:
   app_id: cmp_library_plan_opal_tool
   display_name: CMP Library and Plan Opal Tool WI
-  version: 1.0.0-dev.27
+  version: 1.0.0-dev.28
   vendor: optimizely
   summary: Opal tool to perform action within CMP Library and Plan Module
   support_url: https://support.optimizely.com
