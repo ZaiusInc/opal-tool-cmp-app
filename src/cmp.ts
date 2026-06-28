@@ -14,6 +14,14 @@ interface OptiAuthData {
   };
 }
 
+export interface CmpAssetRendition {
+  id: string;
+  name: string;
+  created_at: string;
+  mime_type: string;
+  url: string;
+}
+
 function generateNumericId() {
   let id = '';
   for (let i = 0; i < 10; i++) {
@@ -188,3 +196,38 @@ export const getAssetLocation = async (
     throw error;
   }
 };
+
+export const getAssetRenditions = async (
+  assetId: string,
+  authData: OptiAuthData
+): Promise<CmpAssetRendition[]> => {
+  if (!assetId) throw new Error('assetId is required');
+
+  const headers = {
+    Accept: 'application/json',
+    'x-auth-token-type': 'opti-id',
+    Authorization: `${authData.credentials.token_type} ${authData.credentials.access_token}`,
+    'Accept-Encoding': 'gzip',
+    'x-request-id': generateNumericId(),
+    'x-org-sso-id': authData.credentials.org_sso_id
+  };
+
+  try {
+    const res: AxiosResponse = await axios.get(
+      `${CMP_BASE_URL}/v3/assets/${assetId}/renditions`,
+      { headers }
+    );
+
+    return res.data.data;
+  } catch (error: any) {
+    console.error(`Failed to fetch renditions for asset ${assetId}:`, error.message);
+
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('CMP Error:', error.response.data);
+    }
+
+    throw error;
+  }
+};
+
+

@@ -1,5 +1,8 @@
 import { logger, Function, Response } from '@zaiusinc/app-sdk';
-import { getTaskDetailsFromCMP, createMilestoneWithinCampaign, updateMilestoneWithinCampaign, getAssetLocation } from '../cmp';
+import {
+  getTaskDetailsFromCMP, createMilestoneWithinCampaign,
+  updateMilestoneWithinCampaign, getAssetLocation, getAssetRenditions
+} from '../cmp';
 
 interface TaskBriefParameters {
   task_id: string;
@@ -70,6 +73,33 @@ const discoveryPayload = {
           required: true
         }
       ]
+    },
+    {
+      name: 'get_library_asset_renditions',
+      description: `Retrieve all renditions for a CMP asset. Optionally filter the returned renditions by MIME type (for example image/webp, image/jpeg or image/png).`,
+      parameters: [
+        {
+          name: 'asset_id',
+          type: 'string',
+          description: 'The CMP asset ID',
+          required: true
+        },
+        {
+          name: 'rendition_type',
+          type: 'string',
+          description: 'Optional rendition format to filter by, for example webp, jpeg, jpg, png or tiff.',
+          required: false
+        }
+      ],
+      endpoint: '/tools/get-library-asset-renditions',
+      http_method: 'POST',
+      auth_requirements: [
+        {
+          provider: 'OptiID',
+          scope_bundle: 'default',
+          required: true
+        }
+      ]
     }
   ]
 };
@@ -89,6 +119,11 @@ export class OpalCMPToolFunction extends Function {
       const params = this.extractParameters();
       const authData = this.extractAuthData() as OptiAuthData;
       const response = await this.getLibraryAssetLocation(params, authData);
+      return new Response(200, response);
+    } else if (this.request.path === '/tools/get-library-asset-renditions') {
+      const params = this.extractParameters();
+      const authData = this.extractAuthData() as OptiAuthData;
+      const response = await this.getLibraryAssetRenditions(params, authData);
       return new Response(200, response);
     } else {
       return new Response(400, 'Invalid path');
@@ -198,6 +233,36 @@ export class OpalCMPToolFunction extends Function {
     } catch (error: any) {
       logger.error('Error fetching asset location:', error.message);
       throw new Error('Failed to fetch asset location from CMP');
+    }
+  }
+
+  private async getLibraryAssetRenditions(parameters: any, authData: OptiAuthData) {
+    const { asset_id, rendition_type } = parameters;
+
+    if (!asset_id) {
+      throw new Error('asset_id is required');
+    }
+
+    try {
+      const renditions = await getAssetRenditions(asset_id, authData);
+
+      const filter =
+        rendition_type?.toLowerCase() === 'jpg'
+          ? 'jpeg'
+          : rendition_type?.toLowerCase();
+
+      const filtered = filter
+        ? renditions.filter(r => r.mime_type.toLowerCase().includes(filter))
+        : renditions;
+
+      return {
+        asset_id,
+        total_renditions: filtered.length,
+        renditions: filtered
+      };
+    } catch (error: any) {
+      logger.error('Error fetching asset renditions:', error.message);
+      throw new Error('Failed to fetch asset renditions from CMP');
     }
   }
 }
