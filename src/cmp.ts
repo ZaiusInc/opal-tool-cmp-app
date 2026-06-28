@@ -262,3 +262,109 @@ export const getOpalFile = async (
   }
 };
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface CmpUploadUrlResponse {
+  url: string;
+  upload_meta_fields: Record<string, string>;
+}
+
+export interface CmpAsset {
+  id: string;
+  title: string;
+  content: {
+    type: string;
+    value: string;
+  };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+export const getUploadUrl = async (
+  authData: OptiAuthData
+): Promise<CmpUploadUrlResponse> => {
+  const headers = {
+    Accept: 'application/json',
+    'x-auth-token-type': 'opti-id',
+    Authorization: `${authData.credentials.token_type} ${authData.credentials.access_token}`,
+    'Accept-Encoding': 'gzip',
+    'x-request-id': generateNumericId(),
+    'x-org-sso-id': authData.credentials.org_sso_id
+  };
+
+  try {
+    const res: AxiosResponse = await axios.get(
+      `${CMP_BASE_URL}/v3/upload-url`,
+      { headers }
+    );
+    return res.data;
+  } catch (error: any) {
+    console.error('Failed to get upload URL:', error.message);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('CMP Error:', error.response.data);
+    }
+    throw error;
+  }
+};
+
+export const uploadFileToS3 = async (
+  uploadUrl: string,
+  metaFields: Record<string, string>,
+  content: string,
+  filename: string,
+  mimeType: string
+): Promise<void> => {
+  const formData = new FormData();
+
+  // S3 requires all meta fields BEFORE the file field
+  for (const [key, value] of Object.entries(metaFields)) {
+    formData.append(key, value);
+  }
+
+  const blob = new Blob([content], { type: mimeType });
+  formData.append('file', blob, filename);
+
+  // Use axios so it stays consistent with the rest of this file,
+  // but note S3 returns 204 (no body) on success
+  try {
+    await axios.post(uploadUrl, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // 204 is a valid success status for S3
+      validateStatus: (status) => (status >= 200 && status < 300) || status === 204
+    });
+  } catch (error: any) {
+    console.error('Failed to upload file to S3:', error.message);
+    throw error;
+  }
+};
+
+export const registerAssetInCmp = async (
+  key: string,
+  title: string,
+  authData: OptiAuthData
+): Promise<CmpAsset> => {
+  const headers = {
+    Accept: 'application/json',
+    'x-auth-token-type': 'opti-id',
+    Authorization: `${authData.credentials.token_type} ${authData.credentials.access_token}`,
+    'Accept-Encoding': 'gzip',
+    'x-request-id': generateNumericId(),
+    'x-org-sso-id': authData.credentials.org_sso_id,
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    const res: AxiosResponse = await axios.post(
+      `${CMP_BASE_URL}/v3/assets`,
+      { key, title },
+      { headers }
+    );
+    return res.data;
+  } catch (error: any) {
+    console.error('Failed to register asset in CMP:', error.message);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('CMP Error:', error.response.data);
+    }
+    throw error;
+  }
+};

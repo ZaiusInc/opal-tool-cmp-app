@@ -2,7 +2,7 @@ import { logger, Function, Response } from '@zaiusinc/app-sdk';
 import {
   getTaskDetailsFromCMP, createMilestoneWithinCampaign,
   updateMilestoneWithinCampaign, getAssetLocation, getAssetRenditions,
-  getOpalFile
+  getOpalFile, getUploadUrl, uploadFileToS3, registerAssetInCmp
 } from '../cmp';
 import pLimit from 'p-limit';
 
@@ -439,13 +439,30 @@ export class OpalCMPToolFunction extends Function {
         )
       ].join('\n');
 
+      // After building outputCsv...
+
+      const filename = 'asset_renditions.csv';
+
+      const { url: s3Url, upload_meta_fields } = await getUploadUrl(authData);
+
+      await uploadFileToS3(s3Url, upload_meta_fields, outputCsv, filename, 'text/csv');
+
+      const asset = await registerAssetInCmp(upload_meta_fields.key, filename, authData);
+
       return {
-        filename: 'asset_renditions.csv',
-        content_type: 'text/csv',
-        content: outputCsv,
+        asset_id: asset.id,
+        url: asset.content.value,
         total_assets: rows.length,
         total_renditions: outputRows.length
       };
+
+      // return {
+      //   filename: 'asset_renditions.csv',
+      //   content_type: 'text/csv',
+      //   content: outputCsv,
+      //   total_assets: rows.length,
+      //   total_renditions: outputRows.length
+      // };
     } catch (error: any) {
       logger.error(
         'Error generating asset renditions CSV:',
