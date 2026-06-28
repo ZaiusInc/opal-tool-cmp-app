@@ -38,7 +38,8 @@
     "@zaiusinc/app-sdk": "2.2.3",
     "@zaiusinc/node-sdk": "^2.0.0",
     "axios": "^1.12.2",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "p-limit": "^7.3.0"
   },
   "resolutions": {
     "grpc-boom": "^3.0.11"

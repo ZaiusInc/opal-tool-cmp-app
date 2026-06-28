@@ -118,7 +118,8 @@ const discoveryPayload = {
     },
     {
       name: 'get_library_asset_renditions_to_csv',
-      description: `Retrieve renditions for every asset ID in a CSV file and return a CSV. Optionally filter renditions by type such as webp, jpeg, png or tiff.`,
+      description: `Retrieve renditions for every asset ID in a CSV file and return a CSV. 
+      Optionally filter renditions by type such as webp, jpeg, png or tiff.`,
       parameters: [
         {
           name: 'csv_file_id',
@@ -351,9 +352,9 @@ export class OpalCMPToolFunction extends Function {
         throw new Error('CSV file is empty.');
       }
 
-      const headers = lines[0].split(',').map(h => h.trim());
+      const headers = lines[0].split(',').map((h) => h.trim());
 
-      const rows = lines.slice(1).map(line => {
+      const rows = lines.slice(1).map((line) => {
         const values = line.split(',');
 
         return headers.reduce<Record<string, string>>((obj, header, index) => {
@@ -370,7 +371,7 @@ export class OpalCMPToolFunction extends Function {
       const limit = pLimit(10);
 
       const results = await Promise.all(
-        rows.map(row =>
+        rows.map((row) =>
           limit(async () => {
             const assetId = row[asset_id_column];
 
@@ -382,12 +383,12 @@ export class OpalCMPToolFunction extends Function {
               const renditions = await getAssetRenditions(assetId, authData);
 
               const filtered = filter
-                ? renditions.filter(r =>
+                ? renditions.filter((r) =>
                   r.mime_type.toLowerCase().includes(filter)
                 )
                 : renditions;
 
-              return filtered.map(r => ({
+              return filtered.map((r) => ({
                 asset_id: assetId,
                 rendition_id: r.id,
                 rendition_name: r.name,
@@ -429,9 +430,9 @@ export class OpalCMPToolFunction extends Function {
 
       const outputCsv = [
         outputHeaders.join(','),
-        ...outputRows.map(row =>
+        ...outputRows.map((row) =>
           outputHeaders
-            .map(header =>
+            .map((header) =>
               `"${String(row[header as keyof typeof row] ?? '').replace(/"/g, '""')}"`
             )
             .join(',')
