@@ -21,6 +21,11 @@ interface OptiAuthData {
   };
 }
 
+interface AssetRenditionsParameters {
+  asset_id: string;
+  rendition_type?: string;
+}
+
 function toIsoUtc(dateString: string): string {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) {
@@ -76,7 +81,8 @@ const discoveryPayload = {
     },
     {
       name: 'get_library_asset_renditions',
-      description: `Retrieve all renditions for a CMP asset. Optionally filter the returned renditions by MIME type (for example image/webp, image/jpeg or image/png).`,
+      description: `Retrieve all renditions for a CMP asset. Optionally filter the returned renditions 
+      by MIME type (for example image/webp, image/jpeg or image/png).`,
       parameters: [
         {
           name: 'asset_id',
@@ -236,8 +242,12 @@ export class OpalCMPToolFunction extends Function {
     }
   }
 
-  private async getLibraryAssetRenditions(parameters: any, authData: OptiAuthData) {
-    const { asset_id, rendition_type } = parameters;
+  private async getLibraryAssetRenditions(
+    parameters: AssetRenditionsParameters,
+    authData: OptiAuthData
+  ) {
+    const { asset_id, rendition_type } =
+      parameters as AssetRenditionsParameters;
 
     if (!asset_id) {
       throw new Error('asset_id is required');
@@ -252,7 +262,9 @@ export class OpalCMPToolFunction extends Function {
           : rendition_type?.toLowerCase();
 
       const filtered = filter
-        ? renditions.filter(r => r.mime_type.toLowerCase().includes(filter))
+        ? renditions.filter(r =>
+          r.mime_type.toLowerCase().includes(filter)
+        )
         : renditions;
 
       return {
