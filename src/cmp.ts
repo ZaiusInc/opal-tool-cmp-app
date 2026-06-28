@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import { CMP_BASE_URL } from './config';
 
+
 interface OptiAuthData {
   provider: string;
   credentials: {
@@ -230,4 +231,34 @@ export const getAssetRenditions = async (
   }
 };
 
+export const getOpalFile = async (
+  fileId: string,
+  authData: OptiAuthData
+): Promise<string> => {
+  if (!fileId) {
+    throw new Error('fileId is required');
+  }
+
+  try {
+    const res: AxiosResponse<ArrayBuffer> = await axios.get(
+      `https://opal-backend.optimizely.com/v1/file/${fileId}`,
+      {
+        responseType: 'arraybuffer',
+        headers: {
+          Authorization: `Bearer ${authData.credentials.access_token}`
+        }
+      }
+    );
+
+    return Buffer.from(res.data).toString('utf8');
+  } catch (error: any) {
+    console.error(`Failed to download Opal file ${fileId}:`, error.message);
+
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Opal Error:', error.response.data);
+    }
+
+    throw error;
+  }
+};
 

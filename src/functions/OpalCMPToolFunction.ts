@@ -1,8 +1,17 @@
 import { logger, Function, Response } from '@zaiusinc/app-sdk';
 import {
   getTaskDetailsFromCMP, createMilestoneWithinCampaign,
-  updateMilestoneWithinCampaign, getAssetLocation, getAssetRenditions
+  updateMilestoneWithinCampaign, getAssetLocation, getAssetRenditions,
+  getOpalFile
 } from '../cmp';
+import pLimit from 'p-limit';
+
+
+interface AssetRenditionsCsvParameters {
+  csv_file_id: string;
+  asset_id_column: string;
+  rendition_type?: string;
+}
 
 interface TaskBriefParameters {
   task_id: string;
@@ -106,6 +115,39 @@ const discoveryPayload = {
           required: true
         }
       ]
+    },
+    {
+      name: 'get_library_asset_renditions_to_csv',
+      description: `Retrieve renditions for every asset ID in a CSV file and return a CSV. Optionally filter renditions by type such as webp, jpeg, png or tiff.`,
+      parameters: [
+        {
+          name: 'csv_file_id',
+          type: 'string',
+          description: 'File ID of the CSV containing asset IDs.',
+          required: true
+        },
+        {
+          name: 'asset_id_column',
+          type: 'string',
+          description: 'Column name containing the asset IDs.',
+          required: true
+        },
+        {
+          name: 'rendition_type',
+          type: 'string',
+          description: 'Optional rendition type filter such as webp, jpeg, png or tiff.',
+          required: false
+        }
+      ],
+      endpoint: '/tools/get-library-asset-renditions-to-csv',
+      http_method: 'POST',
+      auth_requirements: [
+        {
+          provider: 'OptiID',
+          scope_bundle: 'default',
+          required: true
+        }
+      ]
     }
   ]
 };
@@ -130,6 +172,11 @@ export class OpalCMPToolFunction extends Function {
       const params = this.extractParameters();
       const authData = this.extractAuthData() as OptiAuthData;
       const response = await this.getLibraryAssetRenditions(params, authData);
+      return new Response(200, response);
+    } else if (this.request.path === '/tools/get_library_asset_renditions_to_csv') {
+      const params = this.extractParameters();
+      const authData = this.extractAuthData() as OptiAuthData;
+      const response = await this.getLibraryAssetRenditionsToCsv(params, authData);
       return new Response(200, response);
     } else {
       return new Response(400, 'Invalid path');
@@ -247,7 +294,7 @@ export class OpalCMPToolFunction extends Function {
     authData: OptiAuthData
   ) {
     const { asset_id, rendition_type } =
-      parameters as AssetRenditionsParameters;
+      parameters;
 
     if (!asset_id) {
       throw new Error('asset_id is required');
@@ -262,7 +309,7 @@ export class OpalCMPToolFunction extends Function {
           : rendition_type?.toLowerCase();
 
       const filtered = filter
-        ? renditions.filter(r =>
+        ? renditions.filter((r) =>
           r.mime_type.toLowerCase().includes(filter)
         )
         : renditions;
@@ -277,4 +324,136 @@ export class OpalCMPToolFunction extends Function {
       throw new Error('Failed to fetch asset renditions from CMP');
     }
   }
+  private async getLibraryAssetRenditionsToCsv(
+    parameters: AssetRenditionsCsvParameters,
+    authData: OptiAuthData
+  ) {
+    const {
+      csv_file_id,
+      asset_id_column,
+      rendition_type
+    } = parameters;
+
+    if (!csv_file_id) {
+      throw new Error('csv_file_id is required');
+    }
+
+    if (!asset_id_column) {
+      throw new Error('asset_id_column is required');
+    }
+
+    try {
+      const csv = await getOpalFile(csv_file_id, authData);
+
+      const lines = csv.trim().split(/\r?\n/);
+
+      if (lines.length < 2) {
+        throw new Error('CSV file is empty.');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim());
+
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(',');
+
+        return headers.reduce<Record<string, string>>((obj, header, index) => {
+          obj[header] = (values[index] || '').trim();
+          return obj;
+        }, {});
+      });
+
+      const filter =
+        rendition_type?.toLowerCase() === 'jpg'
+          ? 'jpeg'
+          : rendition_type?.toLowerCase();
+
+      const limit = pLimit(10);
+
+      const results = await Promise.all(
+        rows.map(row =>
+          limit(async () => {
+            const assetId = row[asset_id_column];
+
+            if (!assetId) {
+              return [];
+            }
+
+            try {
+              const renditions = await getAssetRenditions(assetId, authData);
+
+              const filtered = filter
+                ? renditions.filter(r =>
+                  r.mime_type.toLowerCase().includes(filter)
+                )
+                : renditions;
+
+              return filtered.map(r => ({
+                asset_id: assetId,
+                rendition_id: r.id,
+                rendition_name: r.name,
+                mime_type: r.mime_type,
+                rendition_url: r.url,
+                error: ''
+              }));
+            } catch (error: any) {
+              logger.error(
+                `Failed to fetch renditions for asset ${assetId}:`,
+                error.message
+              );
+
+              return [
+                {
+                  asset_id: assetId,
+                  rendition_id: '',
+                  rendition_name: '',
+                  mime_type: '',
+                  rendition_url: '',
+                  error: error.message
+                }
+              ];
+            }
+          })
+        )
+      );
+
+      const outputRows = results.flat();
+
+      const outputHeaders = [
+        'asset_id',
+        'rendition_id',
+        'rendition_name',
+        'mime_type',
+        'rendition_url',
+        'error'
+      ];
+
+      const outputCsv = [
+        outputHeaders.join(','),
+        ...outputRows.map(row =>
+          outputHeaders
+            .map(header =>
+              `"${String(row[header as keyof typeof row] ?? '').replace(/"/g, '""')}"`
+            )
+            .join(',')
+        )
+      ].join('\n');
+
+      return {
+        filename: 'asset_renditions.csv',
+        content_type: 'text/csv',
+        content: outputCsv,
+        total_assets: rows.length,
+        total_renditions: outputRows.length
+      };
+    } catch (error: any) {
+      logger.error(
+        'Error generating asset renditions CSV:',
+        error.message
+      );
+
+      throw new Error('Failed to generate asset renditions CSV');
+    }
+  }
 }
+
+
