@@ -174,7 +174,7 @@ export class OpalCMPToolFunction extends Function {
       const authData = this.extractAuthData() as OptiAuthData;
       const response = await this.getLibraryAssetRenditions(params, authData);
       return new Response(200, response);
-    } else if (this.request.path === '/tools/get_library_asset_renditions_to_csv') {
+    } else if (this.request.path === '/tools/get-library-asset-renditions-to-csv') {
       const params = this.extractParameters();
       const authData = this.extractAuthData() as OptiAuthData;
       const response = await this.getLibraryAssetRenditionsToCsv(params, authData);
