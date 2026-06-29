@@ -445,8 +445,11 @@ export class OpalCMPToolFunction extends Function {
               return {
                 ...row,
                 rendition_count: '0',
+                rendition_name_1: '',
                 rendition_url_1: '',
+                rendition_name_2: '',
                 rendition_url_2: '',
+                rendition_name_3: '',
                 rendition_url_3: '',
                 rendition_error: error.message
               };
@@ -456,8 +459,14 @@ export class OpalCMPToolFunction extends Function {
       );
 
       // ── 3. Build output CSV — original columns first, rendition columns appended ──
-      const renditionColumns = ['rendition_count', 'rendition_url_1', 'rendition_url_2',
-        'rendition_url_3', 'rendition_error'];
+      // fix
+      const renditionColumns = [
+        'rendition_count',
+        'rendition_name_1', 'rendition_url_1',
+        'rendition_name_2', 'rendition_url_2',
+        'rendition_name_3', 'rendition_url_3',
+        'rendition_error'
+      ];
       const outputHeaders = [...headers, ...renditionColumns];
 
       const escapeCsvCell = (value: string) =>
