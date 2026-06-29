@@ -11,6 +11,7 @@ interface AssetRenditionsCsvParameters {
   csv_file_id: string;
   asset_id_column: string;
   rendition_type?: string;
+  rendition_name?: string;
 }
 
 interface TaskBriefParameters {
@@ -162,6 +163,12 @@ const discoveryPayload = {
           name: 'rendition_type',
           type: 'string',
           description: 'Optional rendition type filter such as webp, jpeg, png or tiff.',
+          required: false
+        },
+        {
+          name: 'rendition_name',
+          type: 'string',
+          description: 'Optional rendition name to filter by, for example "Original", "Thumbnail", or "WebP". Case-insensitive partial match.',
           required: false
         }
       ],
@@ -357,7 +364,8 @@ export class OpalCMPToolFunction extends Function {
     const {
       csv_file_id,
       asset_id_column,
-      rendition_type
+      rendition_type,
+      rendition_name
     } = parameters;
 
     if (!csv_file_id) {
@@ -425,9 +433,12 @@ export class OpalCMPToolFunction extends Function {
 
             try {
               const renditions = await getAssetRenditions(assetId, authData);
-              const filtered = filter
-                ? renditions.filter((r) => r.mime_type.toLowerCase().includes(filter))
-                : renditions;
+              const filtered = renditions
+                .filter((r) => {
+                  const typeMatch = filter ? r.mime_type.toLowerCase().includes(filter) : true;
+                  const nameMatch = rendition_name ? r.name.toLowerCase().includes(rendition_name.toLowerCase()) : true;
+                  return typeMatch && nameMatch;
+                });
 
               return {
                 ...row,
