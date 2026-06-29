@@ -168,7 +168,8 @@ const discoveryPayload = {
         {
           name: 'rendition_name',
           type: 'string',
-          description: 'Optional rendition name to filter by, for example "Original", "Thumbnail", or "WebP". Case-insensitive partial match.',
+          description: `Optional rendition name to filter by, for example "Original", "Thumbnail", or "WebP". 
+          Case-insensitive partial match.`,
           required: false
         }
       ],
