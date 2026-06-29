@@ -384,7 +384,7 @@ export class OpalCMPToolFunction extends Function {
         throw new Error(
           `Column "${asset_id_column}" not found in CSV. ` +
           `Available columns: ${headers.join(', ')}. ` +
-          `The CSV must contain a "GUID" column (or specify the correct asset ID column name).`
+          'The CSV must contain a "GUID" column (or specify the correct asset ID column name).'
         );
       }
 
@@ -413,10 +413,13 @@ export class OpalCMPToolFunction extends Function {
               return {
                 ...row,
                 rendition_count: '0',
+                rendition_name_1: '',
                 rendition_url_1: '',
+                rendition_name_2: '',
                 rendition_url_2: '',
+                rendition_name_3: '',
                 rendition_url_3: '',
-                rendition_error: 'Missing asset ID'
+                rendition_error: 'Missing asset ID' // or error.message in the catch block
               };
             }
 
@@ -429,8 +432,11 @@ export class OpalCMPToolFunction extends Function {
               return {
                 ...row,
                 rendition_count: String(filtered.length),
+                rendition_name_1: filtered[0]?.name ?? '',
                 rendition_url_1: filtered[0]?.url ?? '',
+                rendition_name_2: filtered[1]?.name ?? '',
                 rendition_url_2: filtered[1]?.url ?? '',
+                rendition_name_3: filtered[2]?.name ?? '',
                 rendition_url_3: filtered[2]?.url ?? '',
                 rendition_error: ''
               };
@@ -450,7 +456,8 @@ export class OpalCMPToolFunction extends Function {
       );
 
       // ── 3. Build output CSV — original columns first, rendition columns appended ──
-      const renditionColumns = ['rendition_count', 'rendition_url_1', 'rendition_url_2', 'rendition_url_3', 'rendition_error'];
+      const renditionColumns = ['rendition_count', 'rendition_url_1', 'rendition_url_2',
+        'rendition_url_3', 'rendition_error'];
       const outputHeaders = [...headers, ...renditionColumns];
 
       const escapeCsvCell = (value: string) =>
