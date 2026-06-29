@@ -434,12 +434,21 @@ export class OpalCMPToolFunction extends Function {
 
             try {
               const renditions = await getAssetRenditions(assetId, authData);
+              // ADD THESE
+              logger.info(`Asset ${assetId}: ${renditions.length} total renditions from API`);
+              logger.info(`Asset ${assetId} rendition names: ${renditions.map(r => r.name).join(', ')}`);
+              logger.info(`Asset ${assetId} rendition mime types: ${renditions.map(r => r.mime_type).join(', ')}`);
+
               const filtered = renditions
                 .filter((r) => {
                   const typeMatch = filter ? r.mime_type.toLowerCase().includes(filter) : true;
                   const nameMatch = rendition_name ? r.name.toLowerCase().includes(rendition_name.toLowerCase()) : true;
                   return typeMatch && nameMatch;
                 });
+
+              // ADD THIS
+              logger.info(`Asset ${assetId}: ${filtered.length} renditions after filtering (type="${filter ?? 'none'}", name="${rendition_name ?? 'none'}")`);
+
 
               return {
                 ...row,
