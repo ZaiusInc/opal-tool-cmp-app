@@ -43,6 +43,31 @@ function toIsoUtc(dateString: string): string {
   return date.toISOString();
 }
 
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';  // escaped quote ""
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  values.push(current);  // push the last field
+  return values;
+}
+
 const discoveryPayload = {
   functions: [
     {
@@ -352,17 +377,26 @@ export class OpalCMPToolFunction extends Function {
         throw new Error('CSV file is empty.');
       }
 
-      const headers = lines[0].split(',').map((h) => h.trim());
+      const headers = parseCSVLine(lines[0]).map((h) => h.trim());
+
+      // Add this before processing rows
+      if (!headers.includes(asset_id_column)) {
+        throw new Error(
+          `Column "${asset_id_column}" not found in CSV. ` +
+          `Available columns: ${headers.join(', ')}. ` +
+          `The CSV must contain a "GUID" column (or specify the correct asset ID column name).`
+        );
+      }
 
       const rows = lines.slice(1).map((line) => {
-        const values = line.split(',');
-
+        const values = parseCSVLine(line);  // replace the split(',') approach
         return headers.reduce<Record<string, string>>((obj, header, index) => {
           obj[header] = (values[index] || '').trim();
           return obj;
         }, {});
       });
 
+      // ── 2. Fetch renditions for every asset (concurrency-limited) ────────
       const filter =
         rendition_type?.toLowerCase() === 'jpg'
           ? 'jpeg'
@@ -370,72 +404,62 @@ export class OpalCMPToolFunction extends Function {
 
       const limit = pLimit(10);
 
-      const results = await Promise.all(
+      const outputRows = await Promise.all(
         rows.map((row) =>
           limit(async () => {
             const assetId = row[asset_id_column];
 
             if (!assetId) {
-              return [];
+              return {
+                ...row,
+                rendition_count: '0',
+                rendition_url_1: '',
+                rendition_url_2: '',
+                rendition_url_3: '',
+                rendition_error: 'Missing asset ID'
+              };
             }
 
             try {
               const renditions = await getAssetRenditions(assetId, authData);
-
               const filtered = filter
-                ? renditions.filter((r) =>
-                  r.mime_type.toLowerCase().includes(filter)
-                )
+                ? renditions.filter((r) => r.mime_type.toLowerCase().includes(filter))
                 : renditions;
 
-              return filtered.map((r) => ({
-                asset_id: assetId,
-                rendition_id: r.id,
-                rendition_name: r.name,
-                mime_type: r.mime_type,
-                rendition_url: r.url,
-                error: ''
-              }));
+              return {
+                ...row,
+                rendition_count: String(filtered.length),
+                rendition_url_1: filtered[0]?.url ?? '',
+                rendition_url_2: filtered[1]?.url ?? '',
+                rendition_url_3: filtered[2]?.url ?? '',
+                rendition_error: ''
+              };
             } catch (error: any) {
-              logger.error(
-                `Failed to fetch renditions for asset ${assetId}:`,
-                error.message
-              );
-
-              return [
-                {
-                  asset_id: assetId,
-                  rendition_id: '',
-                  rendition_name: '',
-                  mime_type: '',
-                  rendition_url: '',
-                  error: error.message
-                }
-              ];
+              logger.error(`Failed to fetch renditions for asset ${assetId}:`, error.message);
+              return {
+                ...row,
+                rendition_count: '0',
+                rendition_url_1: '',
+                rendition_url_2: '',
+                rendition_url_3: '',
+                rendition_error: error.message
+              };
             }
           })
         )
       );
 
-      const outputRows = results.flat();
+      // ── 3. Build output CSV — original columns first, rendition columns appended ──
+      const renditionColumns = ['rendition_count', 'rendition_url_1', 'rendition_url_2', 'rendition_url_3', 'rendition_error'];
+      const outputHeaders = [...headers, ...renditionColumns];
 
-      const outputHeaders = [
-        'asset_id',
-        'rendition_id',
-        'rendition_name',
-        'mime_type',
-        'rendition_url',
-        'error'
-      ];
+      const escapeCsvCell = (value: string) =>
+        `"${String(value ?? '').replace(/"/g, '""')}"`;
 
       const outputCsv = [
         outputHeaders.join(','),
         ...outputRows.map((row) =>
-          outputHeaders
-            .map((header) =>
-              `"${String(row[header as keyof typeof row] ?? '').replace(/"/g, '""')}"`
-            )
-            .join(',')
+          outputHeaders.map((h) => escapeCsvCell(row[h] ?? '')).join(',')
         )
       ].join('\n');
 
@@ -453,16 +477,9 @@ export class OpalCMPToolFunction extends Function {
         asset_id: asset.id,
         url: asset.content.value,
         total_assets: rows.length,
-        total_renditions: outputRows.length
+        total_renditions: outputRows.reduce((sum, r) => sum + Number(r.rendition_count || 0), 0)
       };
 
-      // return {
-      //   filename: 'asset_renditions.csv',
-      //   content_type: 'text/csv',
-      //   content: outputCsv,
-      //   total_assets: rows.length,
-      //   total_renditions: outputRows.length
-      // };
     } catch (error: any) {
       logger.error(
         'Error generating asset renditions CSV:',
