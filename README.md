@@ -190,7 +190,60 @@ logger.debug("Debug log");
 
 ---
 
-## 12. .npmrc Setup
+## 12. Available Custom Tools
+
+This project contains custom AI tools built for customer-specific use cases using the Optimizely Connect Platform (OCP).
+
+### get_task_brief
+
+**Purpose**
+
+Retrieves the details of a CMP task brief, including the associated brief template name.
+
+**Typical Use Case**
+
+Allows AI agents to determine whether a task brief was created using an approved brief template, enabling governance and compliance validation.
+
+---
+
+### get_library_asset_location
+
+**Purpose**
+
+Retrieves CMP library asset metadata using an asset ID, including:
+
+- Asset title
+- Folder ID
+- Asset location (folder path)
+
+**Typical Use Case**
+
+Enables AI agents to identify where an asset is stored within the CMP Library. For example, verifying whether an asset resides within a supplier-specific folder such as:
+
+`/Suppliers/{Supplier Name}/Images/Logo`
+
+---
+
+### get_library_asset_renditions_to_csv
+
+**Purpose**
+
+Processes a CSV containing CMP asset IDs and returns a CSV containing up to three available renditions for each asset.
+
+Supports optional filtering by rendition type, including:
+
+- WebP
+- JPEG
+- PNG
+- TIFF
+
+**Typical Use Case**
+
+Useful for bulk reporting and migration scenarios where rendition URLs are required, such as exporting the available WebP rendition URLs for a collection of assets.
+
+---
+
+## 13. .npmrc Setup
 Create a `.npmrc` file in the project root (add it to `.gitignore`):
 ```ini
 @zaiusinc:registry=https://npm.pkg.github.com/
@@ -205,7 +258,7 @@ unsafe-perm=true
 
 ---
 
-## How to Create a Personal Access Token (Classic) in GitHub
+## 14. How to Create a Personal Access Token (Classic) in GitHub
 
 1. Go to **[GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)**.
 2. Click **“Generate new token (classic)”**.
@@ -222,7 +275,7 @@ unsafe-perm=true
 
 ---
 
-## Summary
+## 15. Summary
 This README provides:
 - Setup for OCP CLI
 - Node.js & Yarn requirements
