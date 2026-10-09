@@ -1,3 +1,3 @@
-# Opal CMP Custom Tools
+# Mark CMP Custom Tools
 
 \<This doc will be shown in Overview tab for your app in App Directory in OCP UI - replace with an overview of your app>

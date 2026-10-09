@@ -4,12 +4,12 @@ sections:
     elements:
       - type: text
         key: opal_tool_url
-        label: Opal CMP Custom Tool URL
+        label: Mark CMP Custom Tool URL
         disabled: true
-        help: Paste the URL below into your Opal tool settings to enable cmp custom tools.
+        help: Paste the URL below into your Mark tool settings to enable cmp custom tools.
       - type: divider
       - type: instructions
-        text: Paste the URL above into `Discovery URL` field in Opal account `Tools` section.
+        text: Paste the URL above into `Discovery URL` field in Mark account `Tools` section.
 # uncomment if you want to use bearer token authentication
 #  - key: bearer_token
 #    label: Bearer Token
